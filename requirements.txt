@@ -18,6 +18,9 @@ scikit-learn
 # Sentiment
 vaderSentiment
 transformers
+serpapi
+langdetect
+
 
 # Data
 redis

@@ -1,0 +1,84 @@
+# Step 1: Install required packages
+# pip install transformers torch langdetect google-search-results
+
+import re
+from langdetect import detect
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+import torch
+from torch.nn.functional import softmax
+from serpapi import GoogleSearch
+from collections import Counter
+import sys
+
+# Configuration
+ROERTA_MODEL = "cardiffnlp/twitter-roberta-base-sentiment"
+T5_MODEL = "t5-small"
+SERP_API_KEY = "e236059e8ddc733ce7e2957365020e879106a4bbe69a22a5e65a4c6cc31dd726"
+PLACE_ID = "ChIJbWgT5k1d1moRwsEZJd0oArc"
+
+# Step 2: Review Collection
+def collect_reviews(place_id, api_key):
+    params = {
+        "engine": "google_maps_reviews",
+        "place_id": place_id,
+        "api_key": api_key
+    }
+    search = GoogleSearch(params)
+    results = search.get_dict()
+    return [r['text'] for r in results.get('reviews', []) if 'text' in r]
+
+# Step 3: Review Cleaning
+def clean_review(text):
+    if not text or len(text.strip()) < 2:  # Lowered from 5
+        return None
+    text = text.lower()
+    return text
+
+
+# Step 4: Sentiment Analysis with RoBERTa
+def analyze_sentiment(texts, tokenizer, model):
+    encoded = tokenizer(texts, padding=True, truncation=True, return_tensors="pt", max_length=512)
+    logits = model(**encoded).logits
+    probs = softmax(logits, dim=1)
+    labels = torch.argmax(probs, dim=1).tolist()
+    return labels, probs.tolist()
+
+# Step 5: Abstractive Summarization with T5
+def summarize_reviews(texts, summarizer, max_chunk_length=1000):
+    combined_text = " ".join(texts)[:max_chunk_length]
+    summary = summarizer(combined_text, max_length=100, min_length=20, do_sample=False)
+    return summary[0]['summary_text']
+
+# Main pipeline
+if __name__ == "__main__":
+    print("Collecting reviews...")
+    raw_reviews = collect_reviews(PLACE_ID, SERP_API_KEY)
+    print(f"✅ Raw reviews collected: {len(raw_reviews)}")
+    print("Sample:", raw_reviews[:2])
+    print("Cleaning reviews...")
+    cleaned_reviews = list(filter(None, [clean_review(r) for r in raw_reviews]))
+    print(f"Total cleaned reviews: {len(cleaned_reviews)}")
+
+    if not cleaned_reviews:
+        print("❌ No valid reviews found after cleaning. Exiting.")
+        sys.exit(1)
+
+    print("Loading RoBERTa model...")
+    roberta_tokenizer = AutoTokenizer.from_pretrained(ROERTA_MODEL)
+    roberta_model = AutoModelForSequenceClassification.from_pretrained(ROERTA_MODEL)
+
+    print("Running sentiment analysis...")
+    sentiments, probabilities = analyze_sentiment(cleaned_reviews, roberta_tokenizer, roberta_model)
+
+    print("Loading T5 summarizer...")
+    summarizer = pipeline("summarization", model=T5_MODEL)
+    summary = summarize_reviews(cleaned_reviews, summarizer)
+
+    print("\n--- Summary ---")
+    print(summary)
+
+    print("\n--- Sentiment Distribution ---")
+    sentiment_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    counts = Counter(sentiments)
+    for label, count in counts.items():
+        print(f"{sentiment_map.get(label, label)}: {count}")
