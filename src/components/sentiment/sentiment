@@ -46,13 +46,23 @@ def analyze_sentiment(texts, tokenizer, model):
 # Step 5: Abstractive Summarization with T5
 def summarize_reviews(texts, summarizer, max_chunk_length=1000):
     combined_text = " ".join(texts)[:max_chunk_length]
-    summary = summarizer(combined_text, max_length=100, min_length=20, do_sample=False)
+    summary = summarizer(combined_text, max_length=45, min_length=20, do_sample=False)
     return summary[0]['summary_text']
 
 # Main pipeline
 if __name__ == "__main__":
     print("Collecting reviews...")
-    raw_reviews = collect_reviews(PLACE_ID, SERP_API_KEY)
+    # raw_reviews = collect_reviews(PLACE_ID, SERP_API_KEY)
+    raw_reviews = [
+    "Absolutely loved the service!",
+    "Worst experience I’ve ever had.",
+    "It was okay, nothing special.",
+    "The staff were very friendly and helpful throughout my trip.",
+    "There was a long wait time, but the support made up for it.",
+    "This was my first travel insurance and it worked great during my claim.",
+    "They denied my claim for no reason, will not use again.",
+    "Very responsive and clear instructions on how to lodge a claim."
+]
     print(f"✅ Raw reviews collected: {len(raw_reviews)}")
     print("Sample:", raw_reviews[:2])
     print("Cleaning reviews...")
