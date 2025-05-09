@@ -15,7 +15,7 @@ ROERTA_MODEL = "cardiffnlp/twitter-roberta-base-sentiment"
 T5_MODEL = "t5-small"
 SERP_API_KEY = "e236059e8ddc733ce7e2957365020e879106a4bbe69a22a5e65a4c6cc31dd726"
 PLACE_ID = "ChIJbWgT5k1d1moRwsEZJd0oArc"
-
+# Make changes
 # Step 2: Review Collection
 def collect_reviews(place_id, api_key):
     params = {
